@@ -1,0 +1,94 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AZURE_CONTAINER_REGISTRY: kopidebatebotregistry
+  CONTAINER_NAME: kopi-debate-bot
+  RESOURCE_GROUP: kopi-debate-bot-rg
+  CONTAINER_INSTANCE_NAME: kopi-debate-bot-ci
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run tests
+      env:
+        PYTHONPATH: src
+        DATABASE_URL: sqlite:///./test.db
+      run: |
+        python -m pytest tests/test_basic.py -v
+    
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  build-and-deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Build and push Docker image
+      run: |
+        # Login to Azure Container Registry
+        az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+        
+        # Build Docker image
+        docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} .
+        docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:latest .
+        
+        # Push Docker image
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:latest
+    
+    - name: Deploy to Azure Container Instances
+      run: |
+        az container create \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.CONTAINER_INSTANCE_NAME }} \
+          --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:latest \
+          --registry-login-server ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io \
+          --registry-username ${{ secrets.AZURE_REGISTRY_USERNAME }} \
+          --registry-password ${{ secrets.AZURE_REGISTRY_PASSWORD }} \
+          --dns-name-label kopi-debate-bot-${{ github.run_number }} \
+          --ports 8000 \
+          --environment-variables DATABASE_URL=sqlite:///./kopi_debate.db DEBUG=false LOG_LEVEL=INFO \
+          --restart-policy Always \
+          --cpu 1 \
+          --memory 1
+    
+    - name: Get deployment URL
+      run: |
+        FQDN=$(az container show --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CONTAINER_INSTANCE_NAME }} --query ipAddress.fqdn --output tsv)
+        echo "🚀 API deployed at: http://$FQDN:8000"
+        echo "📚 API docs at: http://$FQDN:8000/docs"
+        echo "DEPLOYMENT_URL=http://$FQDN:8000" >> $GITHUB_ENV
