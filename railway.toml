@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "uvicorn kopi_bot.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "always"
+
+[env]
+DATABASE_URL = "sqlite:///./kopi_debate.db"
+DEBUG = "false"
+LOG_LEVEL = "INFO"
+PYTHONPATH = "src"

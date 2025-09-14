@@ -287,6 +287,35 @@ make logs
 
 # Ver estado de servicios
 make status
+```
+
+## 🌐 Despliegue en Producción
+
+### Opción Recomendada: Railway
+
+La forma más fácil de obtener una **URL pública** para tu API:
+
+1. **Conectar con GitHub:**
+   - Ve a https://railway.app
+   - Login con GitHub
+   - Selecciona este repositorio
+
+2. **Despliegue automático:**
+   - Railway detecta automáticamente FastAPI
+   - Instala dependencias 
+   - Despliega la API
+
+3. **URL pública inmediata:**
+   ```
+   https://tu-proyecto-production.up.railway.app
+   ```
+
+**Ver guía completa:** [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md)
+
+### Otras opciones disponibles:
+
+- **Azure + GitHub Actions:** [DEPLOY.md](DEPLOY.md)
+- **Heroku, Render, Vercel** también compatibles
 
 # Reconstruir sin cache
 make rebuild
