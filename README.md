@@ -58,6 +58,15 @@ kopi-debate-bot/
 
 ## 🚀 Inicio Rápido
 
+### ⚠️ Importante: Scripts por Plataforma
+
+Este proyecto incluye diferentes scripts de automatización para cada plataforma:
+
+- **🪟 Windows**: Usa `run.ps1` (PowerShell) o `run.bat` (CMD)
+- **🐧 Linux/Mac**: Usa `Makefile` con comandos `make`
+
+**Nota**: El `Makefile` está diseñado específicamente para sistemas Unix (Linux/Mac) y usa sintaxis de shell bash. Los usuarios de Windows deben usar los scripts `.ps1` o `.bat` que están optimizados para CMD y PowerShell.
+
 ### Prerrequisitos
 
 - **Python 3.12.8** (requerido)
